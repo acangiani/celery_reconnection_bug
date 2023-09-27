@@ -1,0 +1,54 @@
+version: "3.9"
+name: sample
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/srv/sample
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/srv/sample
+    command: >
+      sh -c "celery -A sample flower --broker_api=http://guest:guest@rabbitmq:15672/api/"
+
+  rabbitmq:
+    hostname: 'rabbitmq'
+    image: rabbitmq:3.8.9-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+
+  default-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - rabbitmq
+    volumes:
+      - .:/srv/sample
+    deploy:
+      mode: replicated
+      replicas: 1
+    command: >
+      sh -c "celery -A sample worker --pool prefork -l info -E -Q celery,default,default_tasks"
+
+volumes:
+  rabbitmq:

@@ -1,0 +1,5 @@
+.venv/
+.DS_Store
+db.sqlite3
+erl_crash.dump
+__pycache__
